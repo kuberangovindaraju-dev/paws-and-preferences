@@ -1,58 +1,38 @@
 import { SWIPE_THRESHOLD } from './config.js';
-import { updateGhostCards } from './card.js';
 
-let isDragging  = false;
-let startX      = 0;
-let startY      = 0;
-let currentX    = 0;
-let activeCard  = null;
-let stackArea   = null;
-let onDecision  = null;
-let isFlying    = false;
+let isDragging = false;
+let startX     = 0;
+let startY     = 0;
+let currentX   = 0;
+let activeCard = null;
 
-export function attachSwipe(newStackArea, newOnDecision) {
-  // Remove old listeners before attaching new ones
-  if (stackArea) {
-    stackArea.removeEventListener('mousedown',  handleStart);
-    stackArea.removeEventListener('touchstart', handleStart);
-  }
-
-  stackArea  = newStackArea;
-  onDecision = newOnDecision;
-  isFlying   = false;
-
-  stackArea.addEventListener('mousedown',  handleStart);
-  stackArea.addEventListener('touchstart', handleStart, { passive: true });
+export function attachSwipe(card, onFlyOut) {
+  card.addEventListener('mousedown',  e => onStart(e, onFlyOut));
+  card.addEventListener('touchstart', e => onStart(e, onFlyOut), { passive: true });
 }
 
-function handleStart(e) {
-  if (isDragging || isFlying) return;
-  const card = e.target.closest('.card');
-  if (!card || card.classList.contains('card-ghost')) return;
-
+function onStart(e, onFlyOut) {
+  if (isDragging) return;
   isDragging = true;
-  activeCard = card;
-
   const pt = e.touches ? e.touches[0] : e;
   startX   = pt.clientX;
   startY   = pt.clientY;
   currentX = 0;
-
+  activeCard = e.currentTarget;
   activeCard.style.transition = 'none';
 
-  document.addEventListener('mousemove', handleMove);
-  document.addEventListener('mouseup',   handleEnd);
-  document.addEventListener('touchmove', handleMove, { passive: false });
-  document.addEventListener('touchend',  handleEnd);
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   () => onEnd(onFlyOut));
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend',  () => onEnd(onFlyOut));
 }
 
-function handleMove(e) {
+function onMove(e) {
   if (!isDragging || !activeCard) return;
   if (e.cancelable) e.preventDefault();
-
   const pt = e.touches ? e.touches[0] : e;
-  currentX = pt.clientX - startX;
-  const dy = pt.clientY - startY;
+  currentX   = pt.clientX - startX;
+  const dy   = pt.clientY - startY;
 
   activeCard.style.transform = `translate(${currentX}px, ${dy * 0.3}px) rotate(${currentX * 0.08}deg)`;
 
@@ -72,64 +52,38 @@ function handleMove(e) {
   }
 }
 
-function handleEnd() {
-  document.removeEventListener('mousemove', handleMove);
-  document.removeEventListener('mouseup',   handleEnd);
-  document.removeEventListener('touchmove', handleMove);
-  document.removeEventListener('touchend',  handleEnd);
+function onEnd(onFlyOut) {
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup',   () => onEnd(onFlyOut));
+  document.removeEventListener('touchmove', onMove);
+  document.removeEventListener('touchend',  () => onEnd(onFlyOut));
 
   if (!isDragging) return;
   isDragging = false;
 
   if (Math.abs(currentX) >= SWIPE_THRESHOLD) {
-    const liked = currentX > 0;
-    triggerFlyOut(activeCard, liked);
+    flyOut(currentX > 0, onFlyOut);
   } else {
-    snapBack(activeCard);
+    snapBack();
   }
 }
 
-function triggerFlyOut(card, liked) {
-  if (isFlying) return;
-  isFlying = true;
-
+export function flyOut(liked, onFlyOut) {
+  if (!activeCard) return;
   const dir = liked ? 1 : -1;
   const tx  = dir * (window.innerWidth + 200);
 
-  card.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
-  card.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
-  card.style.opacity    = '0';
+  activeCard.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
+  activeCard.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
+  activeCard.style.opacity    = '0';
 
-  setTimeout(() => {
-    isFlying = false;
-    updateGhostCards(stackArea);
-    onDecision(liked);
-  }, 400);
+  setTimeout(() => onFlyOut(liked), 350);
 }
 
-// Called externally by the like/nope buttons in app.js
-export function flyOut(card, liked, area, cb) {
-  if (isFlying) return;
-  isFlying = true;
-
-  const dir = liked ? 1 : -1;
-  const tx  = dir * (window.innerWidth + 200);
-
-  card.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
-  card.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
-  card.style.opacity    = '0';
-
-  setTimeout(() => {
-    isFlying = false;
-    updateGhostCards(area);
-    cb();
-  }, 400);
-}
-
-function snapBack(card) {
-  if (!card) return;
-  card.style.transition = 'transform 0.4s cubic-bezier(.34,1.56,.64,1)';
-  card.style.transform  = 'translate(0,0) rotate(0deg)';
-  card.querySelector('.stamp-like').style.opacity = 0;
-  card.querySelector('.stamp-nope').style.opacity = 0;
+function snapBack() {
+  if (!activeCard) return;
+  activeCard.style.transition = 'transform 0.4s cubic-bezier(.34,1.56,.64,1)';
+  activeCard.style.transform  = 'translate(0,0) rotate(0deg)';
+  activeCard.querySelector('.stamp-like').style.opacity = 0;
+  activeCard.querySelector('.stamp-nope').style.opacity = 0;
 }

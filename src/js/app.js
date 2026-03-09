@@ -1,7 +1,7 @@
-import { loadCats }    from './api.js';
+import { loadCats }                    from './api.js';
 import { renderStack, updateGhostCards } from './card.js';
-import { attachSwipe, flyOut } from './swipe.js';
-import { showSummary } from './summary.js';
+import { flyOut }                       from './swipe.js';
+import { showSummary }                  from './summary.js';
 
 let cats       = [];
 let currentIdx = 0;
@@ -15,27 +15,28 @@ const btnLike    = document.getElementById('btn-like');
 const btnNope    = document.getElementById('btn-nope');
 const replayBtn  = document.getElementById('replay-btn');
 
-function onDecision(liked) {
+// Mirrors flyOut() in the working single-file version exactly
+function onFlyOut(liked) {
   cats[currentIdx].liked = liked;
   currentIdx++;
 
-  if (currentIdx >= cats.length) {
-    showSummary(cats);
-  } else {
-    currentNum.textContent = currentIdx + 1;
-    renderStack(cats, currentIdx, stackArea);
-    attachSwipe(stackArea, onDecision);
-  }
+  setTimeout(() => {
+    updateGhostCards(stackArea);
+    if (currentIdx >= cats.length) {
+      showSummary(cats);
+    } else {
+      currentNum.textContent = currentIdx + 1;
+      renderStack(cats, currentIdx, stackArea, onFlyOut);
+    }
+  }, 350);
 }
 
 btnLike.addEventListener('click', () => {
-  const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
-  if (card) flyOut(card, true, stackArea, () => onDecision(true));
+  flyOut(true, onFlyOut);
 });
 
 btnNope.addEventListener('click', () => {
-  const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
-  if (card) flyOut(card, false, stackArea, () => onDecision(false));
+  flyOut(false, onFlyOut);
 });
 
 replayBtn.addEventListener('click', () => {
@@ -54,9 +55,7 @@ async function init() {
 
   loadingEl.style.display = 'none';
   totalNum.textContent    = cats.length;
-
-  renderStack(cats, currentIdx, stackArea);
-  attachSwipe(stackArea, onDecision);
+  renderStack(cats, currentIdx, stackArea, onFlyOut);
 }
 
 init();

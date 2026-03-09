@@ -1,7 +1,7 @@
-import { loadCats }                    from './api.js';
+import { loadCats }                      from './api.js';
 import { renderStack, updateGhostCards } from './card.js';
-import { flyOut }                       from './swipe.js';
-import { showSummary }                  from './summary.js';
+import { flyOut }                        from './swipe.js';
+import { showSummary }                   from './summary.js';
 
 let cats       = [];
 let currentIdx = 0;
@@ -15,7 +15,6 @@ const btnLike    = document.getElementById('btn-like');
 const btnNope    = document.getElementById('btn-nope');
 const replayBtn  = document.getElementById('replay-btn');
 
-// Mirrors flyOut() in the working single-file version exactly
 function onFlyOut(liked) {
   cats[currentIdx].liked = liked;
   currentIdx++;
@@ -32,11 +31,16 @@ function onFlyOut(liked) {
 }
 
 btnLike.addEventListener('click', () => {
-  flyOut(true, onFlyOut);
+  // Get the actual top card and set it as activeCard via flyOut
+  const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
+  if (!card) return;
+  flyOut(true, onFlyOut, card); // pass card directly
 });
 
 btnNope.addEventListener('click', () => {
-  flyOut(false, onFlyOut);
+  const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
+  if (!card) return;
+  flyOut(false, onFlyOut, card); // pass card directly
 });
 
 replayBtn.addEventListener('click', () => {

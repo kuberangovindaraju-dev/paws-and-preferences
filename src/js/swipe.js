@@ -15,9 +15,9 @@ function onStart(e, onFlyOut) {
   if (isDragging) return;
   isDragging = true;
   const pt = e.touches ? e.touches[0] : e;
-  startX   = pt.clientX;
-  startY   = pt.clientY;
-  currentX = 0;
+  startX     = pt.clientX;
+  startY     = pt.clientY;
+  currentX   = 0;
   activeCard = e.currentTarget;
   activeCard.style.transition = 'none';
 
@@ -68,14 +68,21 @@ function onEnd(onFlyOut) {
   }
 }
 
-export function flyOut(liked, onFlyOut) {
-  if (!activeCard) return;
+// card param is optional — passed by buttons, set from activeCard when swiping
+export function flyOut(liked, onFlyOut, card = null) {
+  const target = card || activeCard;
+  if (!target) return;
+
+  // Show the stamp briefly before flying off
+  const stamp = target.querySelector(liked ? '.stamp-like' : '.stamp-nope');
+  if (stamp) stamp.style.opacity = 1;
+
   const dir = liked ? 1 : -1;
   const tx  = dir * (window.innerWidth + 200);
 
-  activeCard.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
-  activeCard.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
-  activeCard.style.opacity    = '0';
+  target.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
+  target.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
+  target.style.opacity    = '0';
 
   setTimeout(() => onFlyOut(liked), 350);
 }

@@ -112,7 +112,7 @@ html, body {
 
 /* ── Card stage ─ */
 .card-stage {
-  flex: 1;
+  flex: 0 0 var(--card-h);
   position: relative;
   width: var(--card-w);
   display: flex;

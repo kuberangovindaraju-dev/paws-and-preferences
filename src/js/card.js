@@ -1,139 +1,133 @@
+// ─── Card Component ───────────────────────────────────────────────────────────
+
+import { CONFIG } from './config.js';
+import { attachSwipe, flyOff } from './swipe.js';
+
 /**
- * card.js
- * Builds card DOM elements and manages the visible stack.
+ * Create a swipeable cat card DOM element.
  *
- * Stack layout (z-index):
- *   z=10  → top card (interactive)
- *   z=9   → second card (ghost, scaled down slightly)
- *   z=8   → third card  (ghost, scaled down more)
+ * @param {Object}   cat      - { id, url, tag }
+ * @param {number}   stackPos - 0 = top (active), 1 = second, 2 = third
+ * @param {Function} onSwipe  - called with ('like'|'nope', cat)
+ * @returns {{ el: HTMLElement, promote: Function, destroy: Function }}
  */
+export function createCard(cat, stackPos, onSwipe) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.dataset.id = cat.id;
 
-const CardManager = (() => {
-  const GHOST_SCALE_STEP   = 0.05;  // Each ghost card is 5% smaller
-  const GHOST_OFFSET_STEP  = 10;    // Each ghost card is 10px lower
-  const GHOST_OPACITY_STEP = 0.15;  // Each ghost card is 15% more transparent
-  const VISIBLE_STACK_SIZE = 3;
+  // ── Inner structure ────────────────────────────────────────────────────────
+  el.innerHTML = `
+    <div class="card-image-wrap">
+      <div class="card-skeleton"></div>
+      <img
+        class="card-img"
+        src="${cat.url}"
+        alt="A cat tagged '${cat.tag}'"
+        draggable="false"
+        loading="eager"
+      />
+    </div>
 
-  /**
-   * Creates a single card DOM element for a given cat.
-   *
-   * @param {{ url: string, tag: string }} cat
-   * @param {number} index  - Position in the full cats array
-   * @returns {HTMLElement}
-   */
-  function createCardElement(cat, index) {
-    const card = document.createElement('div');
-    card.className = 'card card--enter';
-    card.dataset.index = index;
-    card.setAttribute('role', 'img');
-    card.setAttribute('aria-label', `Cat number ${index + 1}, tagged ${cat.tag}`);
+    <div class="card-badge card-badge--like">
+      <span>😻</span> LOVE
+    </div>
+    <div class="card-badge card-badge--nope">
+      <span>🙈</span> NOPE
+    </div>
 
-    // Stamp overlays — shown as the user drags
-    card.appendChild(_createStamp('like'));
-    card.appendChild(_createStamp('nope'));
+    <div class="card-footer">
+      <span class="card-tag">#${cat.tag}</span>
+    </div>
+  `;
 
-    // Cat image — src set AFTER element built to avoid layout thrash
-    const img = document.createElement('img');
-    img.className   = 'card__image card__image--loading';
-    img.alt         = `Cat ${index + 1}`;
-    img.draggable   = false;
-    img.onload      = () => img.classList.remove('card__image--loading');
-    img.onerror     = () => img.classList.remove('card__image--loading'); // show whatever loaded
-    img.src         = cat.url; // Direct cataas URL as <img src> — CORS-safe
+  const img    = el.querySelector('.card-img');
+  const skel   = el.querySelector('.card-skeleton');
+  const likeBadge = el.querySelector('.card-badge--like');
+  const nopeBadge = el.querySelector('.card-badge--nope');
 
-    // Footer
-    const footer = document.createElement('div');
-    footer.className = 'card__footer';
+  // Remove skeleton once image loads
+  img.addEventListener('load', () => {
+    skel.style.opacity = '0';
+    img.classList.add('loaded');
+  }, { once: true });
 
-    const num = document.createElement('span');
-    num.className   = 'card__number';
-    num.textContent = `Cat #${index + 1}`;
+  // Apply initial stack position
+  applyStackPos(el, stackPos);
 
-    const tag = document.createElement('span');
-    tag.className   = 'card__tag';
-    tag.textContent = cat.tag;
+  // ── Attach gestures only to the top card ──────────────────────────────────
+  let cleanup = null;
 
-    const source = document.createElement('span');
-    source.className   = 'card__source';
-    source.textContent = 'cataas.com';
-
-    footer.appendChild(num);
-    footer.appendChild(tag);
-    footer.appendChild(source);
-
-    card.appendChild(img);
-    card.appendChild(footer);
-
-    return card;
-  }
-
-  /**
-   * Renders up to VISIBLE_STACK_SIZE cards into the stack container.
-   * The top card is interactive; the rest are visual ghost cards.
-   *
-   * @param {HTMLElement} container  - The #stack-area element
-   * @param {Array}       cats       - Full cats array
-   * @param {number}      currentIdx - Index of the top card
-   * @returns {HTMLElement} The top (interactive) card element
-   */
-  function renderStack(container, cats, currentIdx) {
-    container.innerHTML = '';
-
-    const count = Math.min(VISIBLE_STACK_SIZE, cats.length - currentIdx);
-
-    // Render back-to-front so top card is appended last (highest z-index)
-    for (let offset = count - 1; offset >= 0; offset--) {
-      const idx  = currentIdx + offset;
-      if (idx >= cats.length) continue;
-
-      const card    = createCardElement(cats[idx], idx);
-      const isTop   = offset === 0;
-
-      if (isTop) {
-        card.style.zIndex = 10;
-      } else {
-        card.classList.add('card--ghost');
-        card.classList.remove('card--enter'); // ghosts don't animate in
-        const scale   = 1 - offset * GHOST_SCALE_STEP;
-        const offsetY = offset * GHOST_OFFSET_STEP;
-        const opacity = 1 - offset * GHOST_OPACITY_STEP;
-        card.style.transform = `scale(${scale}) translateY(${offsetY}px)`;
-        card.style.opacity   = opacity;
-        card.style.zIndex    = 10 - offset;
-      }
-
-      container.appendChild(card);
-    }
-
-    return container.querySelector(`.card[data-index="${currentIdx}"]`);
-  }
-
-  /**
-   * Smoothly transitions ghost cards toward their new positions
-   * after the top card is removed. Called during swipe flyout.
-   *
-   * @param {HTMLElement} container
-   */
-  function promoteGhostCards(container) {
-    const ghosts = container.querySelectorAll('.card--ghost');
-    ghosts.forEach((ghost, i) => {
-      const scale   = 1 - i * GHOST_SCALE_STEP;
-      const offsetY = i * GHOST_OFFSET_STEP;
-      const opacity = 1 - i * GHOST_OPACITY_STEP;
-      ghost.style.transform = `scale(${scale}) translateY(${offsetY}px)`;
-      ghost.style.opacity   = opacity;
+  if (stackPos === 0) {
+    cleanup = attachSwipe(el, {
+      onDrag({ dx, progress }) {
+        if (dx > 0) {
+          likeBadge.style.opacity = progress;
+          nopeBadge.style.opacity = 0;
+        } else {
+          nopeBadge.style.opacity = progress;
+          likeBadge.style.opacity = 0;
+        }
+      },
+      onCancel() {
+        likeBadge.style.opacity = 0;
+        nopeBadge.style.opacity = 0;
+      },
+      onSwipe(direction) {
+        onSwipe(direction, cat);
+      },
     });
   }
 
-  // ── Private helpers ────────────────────────────────────────
+  // ── promote(): called when this card moves from pos 1→0 or 2→1 ───────────
+  function promote(newPos) {
+    stackPos = newPos;
+    el.style.transition = 'transform 0.35s cubic-bezier(0.4,0,0.2,1)';
+    applyStackPos(el, newPos);
 
-  function _createStamp(type) {
-    const el = document.createElement('div');
-    el.className  = `stamp stamp--${type}`;
-    el.textContent = type === 'like' ? 'CUTE!' : 'NOPE';
-    el.setAttribute('aria-hidden', 'true');
-    return el;
+    if (newPos === 0 && !cleanup) {
+      // Now the active card — attach swipe handlers
+      cleanup = attachSwipe(el, {
+        onDrag({ dx, progress }) {
+          if (dx > 0) {
+            likeBadge.style.opacity = progress;
+            nopeBadge.style.opacity = 0;
+          } else {
+            nopeBadge.style.opacity = progress;
+            likeBadge.style.opacity = 0;
+          }
+        },
+        onCancel() {
+          likeBadge.style.opacity = 0;
+          nopeBadge.style.opacity = 0;
+        },
+        onSwipe(direction) {
+          onSwipe(direction, cat);
+        },
+      });
+    }
   }
 
-  return { createCardElement, renderStack, promoteGhostCards };
-})();
+  // ── Programmatic swipe (button click) ─────────────────────────────────────
+  function triggerSwipe(direction) {
+    if (stackPos !== 0) return;
+    likeBadge.style.opacity = direction === 'like' ? 1 : 0;
+    nopeBadge.style.opacity = direction === 'nope' ? 1 : 0;
+    flyOff(el, direction, () => onSwipe(direction, cat));
+  }
+
+  function destroy() {
+    cleanup?.();
+    el.remove();
+  }
+
+  return { el, promote, triggerSwipe, destroy };
+}
+
+/** Apply CSS transform + z-index for a given stack position */
+function applyStackPos(el, pos) {
+  const offset = CONFIG.STACK_OFFSETS[pos] ?? CONFIG.STACK_OFFSETS[CONFIG.STACK_OFFSETS.length - 1];
+  el.style.transform = `translateY(${offset.y}px) scale(${offset.scale}) rotate(${offset.rotate}deg)`;
+  el.style.zIndex    = offset.zIndex;
+  el.style.pointerEvents = pos === 0 ? 'auto' : 'none';
+}

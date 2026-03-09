@@ -1,166 +1,162 @@
-/**
- * app.js
- * Main application controller.
- *
- * Orchestrates the other modules:
- *   CataasAPI     → fetches & preloads cat data
- *   CardManager   → builds and renders the card stack
- *   SwipeHandler  → handles drag interaction
- *   SummaryManager→ shows the results screen
- *
- * State machine:
- *   LOADING → SWIPING → SUMMARY → LOADING (replay)
- */
+// ─── App Controller ───────────────────────────────────────────────────────────
 
-const App = (() => {
-  // ── App state ────────────────────────────────────────────────
-  let _cats       = [];   // Array of { url, tag, liked }
-  let _currentIdx = 0;   // Index of the card currently on top
+import { CONFIG }                  from './config.js';
+import { fetchCats }               from './api.js';
+import { createCard }              from './card.js';
+import { renderSummary, hideSummary } from './summary.js';
 
-  // ── DOM references ───────────────────────────────────────────
-  const _els = {
-    loading:    document.getElementById('loading'),
-    errorScreen:document.getElementById('error-screen'),
-    app:        document.getElementById('app'),
-    stackArea:  document.getElementById('stack-area'),
-    currentNum: document.getElementById('current-num'),
-    totalNum:   document.getElementById('total-num'),
-    loadingBar: document.getElementById('loading-bar'),
-    btnLike:    document.getElementById('btn-like'),
-    btnNope:    document.getElementById('btn-nope'),
-    btnRetry:   document.getElementById('btn-retry'),
-  };
+class PawsApp {
+  constructor() {
+    this.deck        = [];    // all cat objects (queue)
+    this.cards       = [];    // active card instances (max STACK_SIZE)
+    this.liked       = [];
+    this.noped       = [];
+    this.totalCats   = 0;
+    this.isAnimating = false;
 
-  // ── Boot ─────────────────────────────────────────────────────
+    // DOM refs
+    this.$stack    = document.getElementById('card-stack');
+    this.$likeBtn  = document.getElementById('btn-like');
+    this.$nopeBtn  = document.getElementById('btn-nope');
+    this.$progress = document.getElementById('progress-fill');
+    this.$progTxt  = document.getElementById('progress-text');
+    this.$loading  = document.getElementById('loading');
+    this.$empty    = document.getElementById('empty-state');
+  }
 
-  async function init() {
-    _showScreen('loading');
-    _resetState();
+  async init() {
+    this.showLoading(true);
 
     try {
-      _cats = await CataasAPI.loadAllCats(_onLoadProgress);
+      const cats     = await fetchCats(CONFIG.TOTAL_CATS);
+      this.totalCats = cats.length;
+      this.deck      = [...cats].reverse(); // reverse so we pop() from the front
+
+      this.renderInitialStack();
+      this.bindButtons();
+      this.showLoading(false);
     } catch (err) {
-      console.error('[App] Failed to load cats:', err);
-      _showScreen('error');
-      return;
+      console.error('Failed to load cats:', err);
+      this.showLoading(false);
+      this.$loading.innerHTML = `<p class="error">😿 Couldn't reach Cataas.<br>Check your connection and reload.</p>`;
+      this.$loading.classList.remove('hidden');
+    }
+  }
+
+  // ── Stack management ──────────────────────────────────────────────────────
+
+  renderInitialStack() {
+    const count = Math.min(CONFIG.STACK_SIZE, this.deck.length);
+    for (let i = count - 1; i >= 0; i--) {
+      // i=0 is top card; we add bottom cards first (lower z-index)
+      const stackPos = i;
+      const cat      = this.deck[this.deck.length - 1 - i];
+      this.addCardToStack(cat, stackPos);
+    }
+    // Remove the cats we just rendered from deck
+    this.deck.splice(this.deck.length - count, count);
+    this.updateProgress();
+  }
+
+  addCardToStack(cat, stackPos) {
+    const card = createCard(cat, stackPos, (direction, swipedCat) => {
+      this.handleSwipe(direction, swipedCat, card);
+    });
+    this.$stack.appendChild(card.el);
+    this.cards.unshift(card); // index 0 = top
+  }
+
+  handleSwipe(direction, cat, card) {
+    if (direction === 'like') {
+      this.liked.push(cat);
+      this.triggerHaptic();
+    } else {
+      this.noped.push(cat);
     }
 
-    _els.totalNum.textContent   = _cats.length;
-    _els.currentNum.textContent = 1;
+    // Remove top card from tracking array
+    this.cards = this.cards.filter(c => c !== card);
 
-    _showScreen('app');
-    _renderCurrentStack();
-    _attachButtonListeners();
-  }
+    // Promote remaining cards up one position
+    this.cards.forEach((c, idx) => c.promote(idx));
 
-  // ── Screen management ────────────────────────────────────────
-
-  function _showScreen(name) {
-    ['loading', 'errorScreen', 'app'].forEach(key => {
-      _els[key]?.setAttribute('hidden', '');
-    });
-    document.getElementById('summary')?.setAttribute('hidden', '');
-
-    if (name === 'loading')     _els.loading.removeAttribute('hidden');
-    if (name === 'errorScreen') _els.errorScreen.removeAttribute('hidden');
-    if (name === 'app')         _els.app.removeAttribute('hidden');
-  }
-
-  // ── Loading progress ─────────────────────────────────────────
-
-  function _onLoadProgress(loaded, total) {
-    const pct = Math.round((loaded / total) * 100);
-    _els.loadingBar.style.width = `${pct}%`;
-    _els.loadingBar.closest('[role="progressbar"]')
-      ?.setAttribute('aria-valuenow', pct);
-  }
-
-  // ── Card rendering ───────────────────────────────────────────
-
-  function _renderCurrentStack() {
-    const topCard = CardManager.renderStack(
-      _els.stackArea,
-      _cats,
-      _currentIdx
-    );
-
-    if (topCard) {
-      SwipeHandler.attach(topCard, {
-        onLike:    () => _handleSwipe(true),
-        onDislike: () => _handleSwipe(false),
+    // Pull next cat from deck
+    if (this.deck.length > 0) {
+      const nextCat  = this.deck.pop();
+      const newPos   = Math.min(this.cards.length, CONFIG.STACK_SIZE - 1);
+      // Insert at bottom of visual stack
+      this.addCardToStack(nextCat, newPos);
+      // Re-sort so index 0 is always the top
+      this.cards = this.cards.sort((a, b) => {
+        return parseInt(a.el.style.zIndex) < parseInt(b.el.style.zIndex) ? 1 : -1;
       });
     }
+
+    this.updateProgress();
+
+    // Check if done
+    const done = this.liked.length + this.noped.length === this.totalCats;
+    if (done) {
+      setTimeout(() => this.showSummary(), 500);
+    }
   }
 
-  // ── Swipe logic ──────────────────────────────────────────────
+  // ── Buttons ───────────────────────────────────────────────────────────────
 
-  function _handleSwipe(liked) {
-    // Record the user's decision
-    _cats[_currentIdx].liked = liked;
-    _currentIdx++;
-
-    // Promote ghost cards toward top position while flyout animates
-    CardManager.promoteGhostCards(_els.stackArea);
-
-    // Wait for fly-out animation then render next card / show summary
-    setTimeout(() => {
-      if (_currentIdx >= _cats.length) {
-        _showSummary();
-      } else {
-        _els.currentNum.textContent = _currentIdx + 1;
-        _renderCurrentStack();
-      }
-    }, 380);
+  bindButtons() {
+    this.$likeBtn.addEventListener('click', () => this.triggerTopCard('like'));
+    this.$nopeBtn.addEventListener('click', () => this.triggerTopCard('nope'));
   }
 
-  // ── Button listeners ─────────────────────────────────────────
-
-  function _attachButtonListeners() {
-    // Clone buttons to remove any stale listeners from a previous session
-    ['btnLike', 'btnNope'].forEach(key => {
-      const fresh = _els[key].cloneNode(true);
-      _els[key].replaceWith(fresh);
-      _els[key] = fresh;
-    });
-
-    _els.btnLike.addEventListener('click', () => SwipeHandler.trigger('like'));
-    _els.btnNope.addEventListener('click', () => SwipeHandler.trigger('dislike'));
+  triggerTopCard(direction) {
+    const top = this.cards[0];
+    if (!top) return;
+    top.triggerSwipe(direction);
   }
 
-  // ── Summary ──────────────────────────────────────────────────
+  // ── Progress ──────────────────────────────────────────────────────────────
 
-  function _showSummary() {
-    _els.app.setAttribute('hidden', '');
-    SummaryManager.show(_cats, _onReplay);
+  updateProgress() {
+    const done  = this.liked.length + this.noped.length;
+    const pct   = this.totalCats > 0 ? (done / this.totalCats) * 100 : 0;
+    this.$progress.style.width = `${pct}%`;
+    this.$progTxt.textContent  = `${done} / ${this.totalCats}`;
   }
 
-  function _onReplay() {
-    SummaryManager.hide();
-    init();
+  // ── Summary ───────────────────────────────────────────────────────────────
+
+  showSummary() {
+    renderSummary(this.liked, this.totalCats, () => this.restart());
   }
 
-  // ── State reset ──────────────────────────────────────────────
+  async restart() {
+    hideSummary();
 
-  function _resetState() {
-    _cats       = [];
-    _currentIdx = 0;
-    _els.loadingBar.style.width = '0%';
-    _els.stackArea.innerHTML    = '';
+    // Clear state
+    this.liked  = [];
+    this.noped  = [];
+    this.cards.forEach(c => c.destroy());
+    this.cards  = [];
+    this.$stack.innerHTML = '';
+
+    await new Promise(r => setTimeout(r, 400));
+    await this.init();
   }
 
-  // ── Error retry ──────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
-  function _attachRetryListener() {
-    _els.btnRetry.addEventListener('click', init);
+  showLoading(show) {
+    this.$loading.classList.toggle('hidden', !show);
   }
 
-  // ── Public init ──────────────────────────────────────────────
-  return { init, _attachRetryListener };
-})();
+  triggerHaptic() {
+    if ('vibrate' in navigator) navigator.vibrate(20);
+  }
+}
 
-// ── Bootstrap ────────────────────────────────────────────────
-// Wait for DOM to be fully parsed before starting
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', () => {
-  App._attachRetryListener();
-  App.init();
+  const app = new PawsApp();
+  app.init();
 });

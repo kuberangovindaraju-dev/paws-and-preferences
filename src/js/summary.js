@@ -1,125 +1,102 @@
+// ─── Summary Screen ───────────────────────────────────────────────────────────
+
 /**
- * summary.js
- * Renders the end-of-session results screen.
+ * Render the summary/results screen into #summary.
  *
- * Responsibilities:
- *  - Calculate and display like / pass / total counts
- *  - Show personalised message based on like ratio
- *  - Render a grid of liked cat thumbnails with staggered animation
+ * @param {Array} liked  - array of cat objects the user liked
+ * @param {number} total - total cats shown
+ * @param {Function} onRestart - callback when user hits "Play Again"
  */
+export function renderSummary(liked, total, onRestart) {
+  const section = document.getElementById('summary');
+  section.innerHTML = '';
+  section.classList.remove('hidden');
 
-const SummaryManager = (() => {
-  // Thresholds for personalised messages (like ratio)
-  const MESSAGES = [
-    {
-      minRatio: 0.8,
-      emoji: '😻',
-      title: 'Absolute Cat Lover!',
-      desc: (liked, total) =>
-        `You liked ${liked} out of ${total} cats. You have so much love to give! 🐾`,
-    },
-    {
-      minRatio: 0.5,
-      emoji: '😸',
-      title: 'Certified Cat Fan!',
-      desc: (liked) => `${liked} cuties won your heart today. Excellent taste!`,
-    },
-    {
-      minRatio: 0.2,
-      emoji: '🐱',
-      title: 'Picky but Passionate!',
-      desc: (liked) => `Only ${liked} cats made the cut — you have high standards!`,
-    },
-    {
-      minRatio: 0,
-      emoji: '🙀',
-      title: 'Hard to Impress…',
-      desc: (liked) =>
-        liked === 0
-          ? "Not a single like! Maybe cats aren't your thing? 😅"
-          : `Just ${liked} liked. The perfect cat is out there somewhere!`,
-    },
-  ];
+  const noped  = total - liked.length;
+  const pct    = Math.round((liked.length / total) * 100);
 
-  /**
-   * Shows the summary screen populated with session results.
-   *
-   * @param {Array<{ url: string, tag: string, liked: boolean|null }>} cats
-   * @param {Function} onReplay - Called when the user clicks "Play Again"
-   */
-  function show(cats, onReplay) {
-    const liked  = cats.filter(c => c.liked === true);
-    const passed = cats.filter(c => c.liked === false);
+  // Choose a mood message
+  let mood, emoji;
+  if (liked.length === 0)        { mood = 'Not a cat person today?';  emoji = '🙈'; }
+  else if (liked.length === total){ mood = 'You love ALL the cats!';    emoji = '😻'; }
+  else if (pct >= 70)             { mood = 'Certified cat enthusiast!'; emoji = '🐱'; }
+  else if (pct >= 40)             { mood = 'Selective taste in cats.';  emoji = '😸'; }
+  else                            { mood = 'A discerning cat critic.';  emoji = '🐾'; }
 
-    _updateStats(liked.length, passed.length, cats.length);
-    _updateMessage(liked.length, cats.length);
-    _renderLikedGrid(liked);
-    _attachReplayHandler(onReplay);
+  // ── Header ────────────────────────────────────────────────────────────────
+  const header = document.createElement('div');
+  header.className = 'summary-header';
+  header.innerHTML = `
+    <div class="summary-emoji">${emoji}</div>
+    <h2 class="summary-title">Your Results</h2>
+    <p class="summary-mood">${mood}</p>
+  `;
+  section.appendChild(header);
 
-    document.getElementById('summary').removeAttribute('hidden');
-  }
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const stats = document.createElement('div');
+  stats.className = 'summary-stats';
+  stats.innerHTML = `
+    <div class="stat stat--like">
+      <span class="stat-num">${liked.length}</span>
+      <span class="stat-label">Loved 😻</span>
+    </div>
+    <div class="stat stat--divider">/</div>
+    <div class="stat stat--nope">
+      <span class="stat-num">${noped}</span>
+      <span class="stat-label">Noped 🙈</span>
+    </div>
+  `;
+  section.appendChild(stats);
 
-  /** Hides the summary screen */
-  function hide() {
-    document.getElementById('summary').setAttribute('hidden', '');
-  }
+  // ── Liked grid ────────────────────────────────────────────────────────────
+  if (liked.length > 0) {
+    const gridWrap = document.createElement('div');
+    gridWrap.className = 'summary-grid-wrap';
 
-  // ── Private helpers ─────────────────────────────────────────
+    const gridTitle = document.createElement('p');
+    gridTitle.className = 'summary-grid-title';
+    gridTitle.textContent = `Your favourites`;
+    gridWrap.appendChild(gridTitle);
 
-  function _updateStats(likedCount, passedCount, total) {
-    document.getElementById('stat-liked').textContent  = likedCount;
-    document.getElementById('stat-passed').textContent = passedCount;
-    document.getElementById('stat-total').textContent  = total;
-  }
+    const grid = document.createElement('div');
+    grid.className = 'summary-grid';
 
-  function _updateMessage(likedCount, total) {
-    const ratio   = total > 0 ? likedCount / total : 0;
-    const message = MESSAGES.find(m => ratio >= m.minRatio) ?? MESSAGES[MESSAGES.length - 1];
-
-    document.getElementById('summary-emoji').textContent = message.emoji;
-    document.getElementById('summary-title').textContent = message.title;
-    document.getElementById('summary-desc').textContent  = message.desc(likedCount, total);
-  }
-
-  function _renderLikedGrid(likedCats) {
-    const grid     = document.getElementById('liked-grid');
-    const section  = document.getElementById('liked-section');
-    const emptyMsg = document.getElementById('empty-likes');
-
-    grid.innerHTML = '';
-
-    if (likedCats.length === 0) {
-      section.setAttribute('hidden', '');
-      emptyMsg.removeAttribute('hidden');
-      return;
-    }
-
-    section.removeAttribute('hidden');
-    emptyMsg.setAttribute('hidden', '');
-
-    likedCats.forEach((cat, i) => {
-      const thumb = document.createElement('div');
-      thumb.className = 'liked-thumb';
-      // Staggered pop-in animation delay
-      thumb.style.animationDelay = `${i * 55}ms`;
-
-      const img = document.createElement('img');
-      img.src   = cat.url; // Already cached in browser — loads instantly
-      img.alt   = `Liked cat ${i + 1}`;
-      img.loading = 'lazy';
-
-      thumb.appendChild(img);
-      grid.appendChild(thumb);
+    liked.forEach((cat, i) => {
+      const item = document.createElement('div');
+      item.className = 'summary-grid-item';
+      item.style.animationDelay = `${i * 60}ms`;
+      item.innerHTML = `
+        <img src="${cat.url}" alt="liked cat" loading="lazy" />
+        <span class="grid-tag">#${cat.tag}</span>
+      `;
+      grid.appendChild(item);
     });
+
+    gridWrap.appendChild(grid);
+    section.appendChild(gridWrap);
   }
 
-  function _attachReplayHandler(onReplay) {
-    const btn = document.getElementById('btn-replay');
-    // Clone to remove any previously attached listener
-    const fresh = btn.cloneNode(true);
-    btn.replaceWith(fresh);
-    fresh.addEventListener('click', onReplay);
-  }
+  // ── Restart button ────────────────────────────────────────────────────────
+  const btn = document.createElement('button');
+  btn.className = 'btn-restart';
+  btn.textContent = '🐾 Try Again';
+  btn.addEventListener('click', onRestart);
+  section.appendChild(btn);
 
-  return { show, hide };
-})();
+  // Scroll to top
+  section.scrollTop = 0;
+
+  // Animate in
+  requestAnimationFrame(() => section.classList.add('visible'));
+}
+
+/** Hide the summary screen */
+export function hideSummary() {
+  const section = document.getElementById('summary');
+  section.classList.remove('visible');
+  setTimeout(() => {
+    section.classList.add('hidden');
+    section.innerHTML = '';
+  }, 350);
+}

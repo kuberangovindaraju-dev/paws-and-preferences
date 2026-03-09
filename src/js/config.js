@@ -1,35 +1,32 @@
-/**
- * config.js
- * Central configuration for Paws & Preferences.
- * Changing values here affects the whole app — no magic numbers scattered
- * throughout the codebase.
- */
+// ─── App Configuration ───────────────────────────────────────────────────────
 
-const CONFIG = Object.freeze({
-  /** Number of cat cards per session (API recommends 10–20) */
+export const CONFIG = {
+  // How many cats to load
   TOTAL_CATS: 15,
 
-  /**
-   * Minimum horizontal drag distance (px) to register a swipe.
-   * Below this the card snaps back to centre.
-   */
-  SWIPE_THRESHOLD: 85,
+  // Cataas base URL
+  CATAAS_BASE: 'https://cataas.com',
 
-  /**
-   * Cat image source.
-   * https://cataas.com/cat returns a random cat image on every request.
-   * We append ?v=<unique> so the browser treats each card as a separate
-   * network request and does not serve the same cached image for all cards.
-   */
-  CATAAS_BASE_URL: 'https://cataas.com/cat',
+  // Swipe threshold (px) to register a decision
+  SWIPE_THRESHOLD: 80,
 
-  /** Fallback tag labels shown in the card footer */
-  CAT_TAGS: [
-    'tabby', 'kitten', 'fluffy', 'ginger', 'black',
-    'white',  'orange', 'cute',   'sleepy', 'playful',
-    'grumpy', 'tiny',   'chonk',  'void',   'calico',
+  // Rotation max degrees during drag
+  MAX_ROTATION: 18,
+
+  // How many cards to render in the visible stack
+  STACK_SIZE: 3,
+
+  // Card tilt offsets for stack effect
+  STACK_OFFSETS: [
+    { y: 0,  scale: 1,    rotate: 0,   zIndex: 10 },
+    { y: 10, scale: 0.96, rotate: 2,   zIndex: 9  },
+    { y: 18, scale: 0.92, rotate: -1,  zIndex: 8  },
   ],
+};
 
-  /** How long (ms) to wait for each image before giving up */
-  IMAGE_TIMEOUT_MS: 8000,
-});
+// Cat tags to cycle through for variety
+export const CAT_TAGS = [
+  'cute', 'funny', 'orange', 'black', 'fluffy',
+  'kitten', 'tabby', 'white', 'grey', 'sleeping',
+  'playing', 'grumpy', 'tiny', 'big', 'striped',
+];

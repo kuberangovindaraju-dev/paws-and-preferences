@@ -20,35 +20,11 @@ const CataasAPI = (() => {
    * @returns {Promise<Array<{url: string, tag: string}>>}
    */
   async function fetchCatList() {
-    try {
-      const skip = Math.floor(Math.random() * 150);
-      const res  = await fetch(
-        `https://cataas.com/api/cats?limit=${CONFIG.TOTAL_CATS + 10}&skip=${skip}`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-
-      if (!res.ok) throw new Error(`API responded ${res.status}`);
-
-      const data = await res.json();
-
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error('Empty response from API');
-      }
-
-      // Shuffle and trim to exactly TOTAL_CATS
-      const shuffled = data.sort(() => Math.random() - 0.5).slice(0, CONFIG.TOTAL_CATS);
-
-      return shuffled.map((cat, i) => ({
-        url: `https://cataas.com/cat/${cat._id}`,
-        tag: Array.isArray(cat.tags) && cat.tags.length > 0
-          ? cat.tags[0]
-          : CONFIG.CAT_TAGS[i % CONFIG.CAT_TAGS.length],
-      }));
-
-    } catch (err) {
-      console.warn('[CataasAPI] JSON list failed, using random fallback:', err.message);
-      return buildFallbackList();
-    }
+    // The ID-based endpoint (GET /api/cats + /cat/:id) returns 404s when
+    // cataas.com rebuilds its database — which happens periodically.
+    // The most reliable approach is the random /cat endpoint used directly
+    // as <img src> with a unique cache-busting param per card.
+    return buildFallbackList();
   }
 
   /**

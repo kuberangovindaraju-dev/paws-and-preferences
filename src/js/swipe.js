@@ -6,6 +6,10 @@ let startY     = 0;
 let currentX   = 0;
 let activeCard = null;
 
+export function setActiveCard(card) {
+  activeCard = card;
+}
+
 export function attachSwipe(card, onFlyOut) {
   card.addEventListener('mousedown',  e => onStart(e, onFlyOut));
   card.addEventListener('touchstart', e => onStart(e, onFlyOut), { passive: true });
@@ -68,21 +72,18 @@ function onEnd(onFlyOut) {
   }
 }
 
-// card param is optional — passed by buttons, set from activeCard when swiping
-export function flyOut(liked, onFlyOut, card = null) {
-  const target = card || activeCard;
-  if (!target) return;
+export function flyOut(liked, onFlyOut) {
+  if (!activeCard) return;
 
-  // Show the stamp briefly before flying off
-  const stamp = target.querySelector(liked ? '.stamp-like' : '.stamp-nope');
+  const stamp = activeCard.querySelector(liked ? '.stamp-like' : '.stamp-nope');
   if (stamp) stamp.style.opacity = 1;
 
   const dir = liked ? 1 : -1;
   const tx  = dir * (window.innerWidth + 200);
 
-  target.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
-  target.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
-  target.style.opacity    = '0';
+  activeCard.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
+  activeCard.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
+  activeCard.style.opacity    = '0';
 
   setTimeout(() => onFlyOut(liked), 350);
 }

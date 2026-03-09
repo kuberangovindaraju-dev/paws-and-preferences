@@ -1,6 +1,6 @@
 import { loadCats }                      from './api.js';
 import { renderStack, updateGhostCards } from './card.js';
-import { flyOut }                        from './swipe.js';
+import { flyOut, setActiveCard }         from './swipe.js';
 import { showSummary }                   from './summary.js';
 
 let cats       = [];
@@ -31,16 +31,17 @@ function onFlyOut(liked) {
 }
 
 btnLike.addEventListener('click', () => {
-  // Get the actual top card and set it as activeCard via flyOut
   const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
   if (!card) return;
-  flyOut(true, onFlyOut, card); // pass card directly
+  setActiveCard(card);  // tell swipe.js which card to animate
+  flyOut(true, onFlyOut);
 });
 
 btnNope.addEventListener('click', () => {
   const card = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
   if (!card) return;
-  flyOut(false, onFlyOut, card); // pass card directly
+  setActiveCard(card);  // tell swipe.js which card to animate
+  flyOut(false, onFlyOut);
 });
 
 replayBtn.addEventListener('click', () => {

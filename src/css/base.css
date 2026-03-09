@@ -1,3 +1,6 @@
+/* =============================================================
+   BASE — Reset, CSS variables, global layout
+   ============================================================= */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -5,7 +8,7 @@
   padding: 0;
 }
 
-
+/* ── Design tokens ─────────────────────────────────────────── */
 :root {
   /* Palette */
   --color-bg:        #F9F4EE;
@@ -79,7 +82,7 @@ html, body {
   overflow: hidden;
 }
 
-/* ── Header ──*/
+/* ── Header ─────────────────────────────────────────────────── */
 .app-header {
   width: 100%;
   max-width: 420px;
@@ -110,9 +113,9 @@ html, body {
 }
 .progress-pill b { color: var(--color-ink); }
 
-/* ── Card stage ─ */
+/* ── Card stage ─────────────────────────────────────────────── */
 .card-stage {
-  flex: 0 0 var(--card-h);
+  flex: 1;
   position: relative;
   width: var(--card-w);
   display: flex;
@@ -120,14 +123,13 @@ html, body {
   justify-content: center;
 }
 
-/* ── Swipe hint ─*/
+/* ── Swipe hint ─────────────────────────────────────────────── */
 .swipe-hint {
   font-size: 11px;
   letter-spacing: 0.6px;
   color: var(--color-border);
   text-align: center;
-  padding-top: 12px;
-  padding-bottom: 16px;
+  padding-bottom: 8px;
   text-transform: uppercase;
 }
 

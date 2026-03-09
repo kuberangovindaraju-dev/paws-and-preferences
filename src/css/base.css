@@ -1,0 +1,160 @@
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+
+:root {
+  /* Palette */
+  --color-bg:        #F9F4EE;
+  --color-surface:   #EDE4D8;
+  --color-border:    #D9CABC;
+  --color-clay:      #B8956A;
+  --color-rust:      #C0533A;
+  --color-forest:    #3A6B4F;
+  --color-ink:       #1E1A17;
+  --color-muted:     #7A6E66;
+  --color-white:     #FFFFFF;
+
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'DM Sans', system-ui, sans-serif;
+
+  /* Card sizing — fluid, respects small phones */
+  --card-w: min(360px, 88vw);
+  --card-h: min(520px, 72vh);
+  --card-radius: 24px;
+
+  /* Elevation */
+  --shadow-card:
+    0 2px 4px  rgba(30, 26, 23, 0.06),
+    0 12px 40px rgba(30, 26, 23, 0.14),
+    0 1px 0    rgba(255, 255, 255, 0.9) inset;
+  --shadow-btn:
+    0 4px 16px rgba(30, 26, 23, 0.12),
+    0 1px 0    rgba(255, 255, 255, 0.9) inset;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Root ───────────────────────────────────────────────────── */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  /* Subtle grain texture */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* ── Full-screen overlay utility ────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Hidden utility (accessible) ───────────────────────────── */
+[hidden] { display: none !important; }
+
+/* ── Main app shell ─────────────────────────────────────────── */
+#app {
+  position: relative;
+  height: 100dvh;          /* dvh = dynamic viewport height (accounts for mobile browser chrome) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+/* ── Header ──*/
+.app-header {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px 0 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: clamp(20px, 5vw, 26px);
+  font-weight: 900;
+  color: var(--color-ink);
+  letter-spacing: -0.5px;
+}
+.logo span { color: var(--color-clay); }
+
+.progress-pill {
+  margin-left: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+.progress-pill b { color: var(--color-ink); }
+
+/* ── Card stage ─ */
+.card-stage {
+  flex: 1;
+  position: relative;
+  width: var(--card-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Swipe hint ─*/
+.swipe-hint {
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  color: var(--color-border);
+  text-align: center;
+  padding-bottom: 8px;
+  text-transform: uppercase;
+}
+
+/* ── Action bar ─────────────────────────────────────────────── */
+.action-bar {
+  width: 100%;
+  max-width: 280px;
+  padding: 8px 0 env(safe-area-inset-bottom, 20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+/* ── Summary screen ─────────────────────────────────────────── */
+#summary {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--color-bg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.summary-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px env(safe-area-inset-bottom, 32px);
+  max-width: 480px;
+  margin: 0 auto;
+}

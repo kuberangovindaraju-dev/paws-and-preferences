@@ -6,22 +6,26 @@
   <meta name="description" content="Paws & Preferences — Discover your favourite kind of cat with a swipe." />
   <meta name="theme-color" content="#F9F4EE" />
 
+  <!-- Open Graph (looks good when shared on WhatsApp/Slack) -->
   <meta property="og:title" content="Paws & Preferences 🐾" />
   <meta property="og:description" content="Swipe to find your favourite kind of cat!" />
   <meta property="og:type" content="website" />
 
   <title>Paws & Preferences 🐾</title>
 
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
 
+  <!-- Styles -->
   <link rel="stylesheet" href="src/css/base.css" />
   <link rel="stylesheet" href="src/css/components.css" />
   <link rel="stylesheet" href="src/css/animations.css" />
 </head>
 <body>
 
+  <!-- Loading Screen -->
   <div id="loading" role="status" aria-label="Loading cats">
     <div class="loader-paw" aria-hidden="true">🐾</div>
     <p class="loader-text">Fetching some cuties…</p>
@@ -30,6 +34,7 @@
     </div>
   </div>
 
+  <!-- Error Screen -->
   <div id="error-screen" hidden>
     <div class="error-icon">😿</div>
     <h2 class="error-title">Couldn't fetch cats</h2>
@@ -37,6 +42,7 @@
     <button class="btn-retry" id="btn-retry">Try Again</button>
   </div>
 
+  <!-- Main App -->
   <div id="app" hidden>
     <header class="app-header">
       <div class="logo">Paws <span>&</span> Preferences</div>
@@ -59,6 +65,7 @@
     </div>
   </div>
 
+  <!-- Summary Screen -->
   <div id="summary" hidden>
     <div class="summary-inner">
       <div class="summary-emoji" id="summary-emoji" aria-hidden="true">🐱</div>
@@ -93,6 +100,7 @@
     </div>
   </div>
 
+  <!-- JS Modules (loaded in dependency order) -->
   <script src="src/js/config.js"></script>
   <script src="src/js/api.js"></script>
   <script src="src/js/card.js"></script>

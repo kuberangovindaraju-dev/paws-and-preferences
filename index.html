@@ -5,103 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="description" content="Paws & Preferences — Discover your favourite kind of cat with a swipe." />
   <meta name="theme-color" content="#F9F4EE" />
-
-  <!-- Open Graph (looks good when shared on WhatsApp/Slack) -->
   <meta property="og:title" content="Paws & Preferences 🐾" />
   <meta property="og:description" content="Swipe to find your favourite kind of cat!" />
   <meta property="og:type" content="website" />
-
   <title>Paws & Preferences 🐾</title>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
-
-  <!-- Styles -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/css/base.css" />
   <link rel="stylesheet" href="src/css/components.css" />
   <link rel="stylesheet" href="src/css/animations.css" />
 </head>
 <body>
 
-  <!-- Loading Screen -->
-  <div id="loading" role="status" aria-label="Loading cats">
-    <div class="loader-paw" aria-hidden="true">🐾</div>
-    <p class="loader-text">Fetching some cuties…</p>
-    <div class="loader-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-      <div class="loader-bar" id="loading-bar"></div>
-    </div>
+  <div id="loading">
+    <div class="paw-loader">🐾</div>
+    <p>Fetching some cuties…</p>
+    <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
   </div>
 
-  <!-- Error Screen -->
-  <div id="error-screen" hidden>
-    <div class="error-icon">😿</div>
-    <h2 class="error-title">Couldn't fetch cats</h2>
-    <p class="error-desc">Check your internet connection and try again.</p>
-    <button class="btn-retry" id="btn-retry">Try Again</button>
-  </div>
-
-  <!-- Main App -->
-  <div id="app" hidden>
-    <header class="app-header">
+  <div id="app">
+    <header>
       <div class="logo">Paws <span>&</span> Preferences</div>
-      <div class="progress-pill">
-        <b id="current-num">1</b> / <span id="total-num">15</span>
-      </div>
+      <div class="progress-pill"><b id="current-num">1</b> / <span id="total-num">15</span></div>
     </header>
-
-    <main class="card-stage" id="stack-area" aria-label="Cat card stack"></main>
-
-    <p class="swipe-hint" aria-hidden="true">← dislike &nbsp;·&nbsp; swipe &nbsp;·&nbsp; like →</p>
-
-    <div class="action-bar" role="group" aria-label="Like or dislike">
-      <button class="btn btn-nope" id="btn-nope" aria-label="Dislike this cat">
-        <span aria-hidden="true">✕</span>
-      </button>
-      <button class="btn btn-like" id="btn-like" aria-label="Like this cat">
-        <span aria-hidden="true">♥</span>
-      </button>
+    <div id="stack-area"></div>
+    <p class="hint">Swipe right to ❤️ · Swipe left to skip</p>
+    <div id="actions">
+      <button class="btn btn-nope" id="btn-nope" aria-label="Dislike">✕</button>
+      <button class="btn btn-like" id="btn-like" aria-label="Like">♥</button>
     </div>
   </div>
 
-  <!-- Summary Screen -->
-  <div id="summary" hidden>
-    <div class="summary-inner">
-      <div class="summary-emoji" id="summary-emoji" aria-hidden="true">🐱</div>
-      <h2 class="summary-title" id="summary-title">You're a cat person!</h2>
-      <p class="summary-desc" id="summary-desc"></p>
-
-      <div class="stats-row" role="list">
-        <div class="stat-card stat-liked" role="listitem">
-          <span class="stat-num" id="stat-liked">0</span>
-          <span class="stat-label">Liked</span>
-        </div>
-        <div class="stat-card stat-passed" role="listitem">
-          <span class="stat-num" id="stat-passed">0</span>
-          <span class="stat-label">Passed</span>
-        </div>
-        <div class="stat-card stat-total" role="listitem">
-          <span class="stat-num" id="stat-total">0</span>
-          <span class="stat-label">Total</span>
-        </div>
+  <div id="summary">
+    <div class="summary-header">
+      <div class="big-emoji" id="summary-emoji">🐱</div>
+      <h2 id="summary-title">You're a cat person!</h2>
+      <p id="summary-desc">Here's what you thought of today's lineup.</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card liked">
+        <div class="stat-num" id="stat-liked">0</div>
+        <div class="stat-label">Liked</div>
       </div>
-
-      <section class="liked-section" id="liked-section">
-        <h3 class="liked-heading">Your favourites 🐾</h3>
-        <div class="liked-grid" id="liked-grid" role="list" aria-label="Liked cats"></div>
-      </section>
-
-      <p class="empty-likes" id="empty-likes" hidden>
-        No cats liked — they'll win you over next time! 😸
-      </p>
-
-      <button class="btn-replay" id="btn-replay">Play Again 🔄</button>
+      <div class="stat-card passed">
+        <div class="stat-num" id="stat-passed">0</div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div class="stat-card total">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Total</div>
+      </div>
     </div>
+    <div class="liked-section">
+      <h3 id="liked-heading">Your favourites 🐾</h3>
+      <div class="liked-grid" id="liked-grid"></div>
+      <div class="empty-likes" id="empty-likes" style="display:none;">No cats liked — they'll win you over next time! 😸</div>
+    </div>
+    <button class="replay-btn" id="replay-btn">Try again 🔄</button>
   </div>
 
-  <!-- JS entry point (imports all other modules automatically) -->
   <script type="module" src="src/js/app.js"></script>
-
 </body>
 </html>

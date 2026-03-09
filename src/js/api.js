@@ -1,43 +1,25 @@
-// ─── Cataas API ──────────────────────────────────────────────────────────────
+import { TOTAL_CATS, CAT_TAGS } from './config.js';
 
-import { CONFIG, CAT_TAGS } from './config.js';
-
-/**
- * Build a Cataas image URL.
- * We use /cat/{tag} with a cache-busting seed so each URL is unique.
- */
-function buildCatUrl(tag, seed) {
-  return `${CONFIG.CATAAS_BASE}/cat/${tag}?width=500&height=620&position=center&_=${seed}`;
-}
-
-/**
- * Fetch an array of cat objects: { id, url, tag }
- * We spread across different tags for visual variety.
- */
-export async function fetchCats(count = CONFIG.TOTAL_CATS) {
+export async function loadCats(onProgress) {
   const cats = [];
-
-  for (let i = 0; i < count; i++) {
+  const promises = Array.from({ length: TOTAL_CATS }, (_, i) => {
+    const seed = Date.now() + i * 137 + Math.floor(Math.random() * 9999);
     const tag = CAT_TAGS[i % CAT_TAGS.length];
-    const seed = Date.now() + i * 997; // prime multiplier keeps seeds spread out
-    cats.push({
-      id: i,
-      tag,
-      url: buildCatUrl(tag, seed),
+    const url = `https://cataas.com/cat?width=600&height=700&${seed}`;
+    return preloadImage(url, i).then(loaded => {
+      cats.push({ url: loaded, tag, liked: null });
+      onProgress(Math.round(((i + 1) / TOTAL_CATS) * 100));
     });
-  }
-
+  });
+  await Promise.allSettled(promises);
   return cats;
 }
 
-/**
- * Preload an image and return a promise that resolves when loaded (or rejects on error).
- */
-export function preloadImage(url) {
-  return new Promise((resolve, reject) => {
+function preloadImage(url, idx) {
+  return new Promise((resolve) => {
     const img = new Image();
     img.onload  = () => resolve(url);
-    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
+    img.onerror = () => resolve(`https://cataas.com/cat?t=${Date.now()}${idx}`);
     img.src = url;
   });
 }

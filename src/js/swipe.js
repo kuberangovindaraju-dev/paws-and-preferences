@@ -1,108 +1,89 @@
-// ─── Swipe Gesture Handler ───────────────────────────────────────────────────
+import { SWIPE_THRESHOLD } from './config.js';
+import { updateGhostCards } from './card.js';
 
-import { CONFIG } from './config.js';
+let isDragging = false;
+let startX = 0, startY = 0, currentX = 0;
+let activeCard = null;
 
-/**
- * Attach swipe (touch + mouse) gesture handling to a card element.
- *
- * @param {HTMLElement} el       - The card element to make swipeable
- * @param {Function}    onSwipe  - Called with 'like' | 'nope' when swipe completes
- * @param {Function}    onDrag   - Called with { dx, progress } during drag
- * @param {Function}    onCancel - Called when drag is released without reaching threshold
- */
-export function attachSwipe(el, { onSwipe, onDrag, onCancel }) {
-  let startX = 0;
-  let startY = 0;
-  let currentX = 0;
-  let isDragging = false;
-  let animFrame = null;
-
-  // ── Pointer down ──────────────────────────────────────────────────────────
-  function handleStart(e) {
-    if (el.classList.contains('flying')) return;
-    isDragging = true;
-    const point = e.touches ? e.touches[0] : e;
-    startX  = point.clientX;
-    startY  = point.clientY;
-    currentX = 0;
-    el.style.transition = 'none';
-    el.classList.add('dragging');
-  }
-
-  // ── Pointer move ──────────────────────────────────────────────────────────
-  function handleMove(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-
-    const point = e.touches ? e.touches[0] : e;
-    const dx = point.clientX - startX;
-    const dy = point.clientY - startY;
-    currentX = dx;
-
-    const progress = Math.min(Math.abs(dx) / CONFIG.SWIPE_THRESHOLD, 1); // 0→1
-    const rotate   = (dx / window.innerWidth) * CONFIG.MAX_ROTATION;
-
-    if (animFrame) cancelAnimationFrame(animFrame);
-    animFrame = requestAnimationFrame(() => {
-      el.style.transform = `translateX(${dx}px) translateY(${dy * 0.25}px) rotate(${rotate}deg)`;
-      onDrag?.({ dx, progress });
-    });
-  }
-
-  // ── Pointer up ────────────────────────────────────────────────────────────
-  function handleEnd() {
-    if (!isDragging) return;
-    isDragging = false;
-    el.classList.remove('dragging');
-
-    if (animFrame) cancelAnimationFrame(animFrame);
-
-    if (Math.abs(currentX) >= CONFIG.SWIPE_THRESHOLD) {
-      const direction = currentX > 0 ? 'like' : 'nope';
-      flyOff(el, direction, () => onSwipe(direction));
-    } else {
-      // Snap back
-      el.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-      el.style.transform  = 'translateX(0) translateY(0) rotate(0deg)';
-      onCancel?.();
-    }
-  }
-
-  // ── Touch events ──────────────────────────────────────────────────────────
-  el.addEventListener('touchstart',  handleStart, { passive: true });
-  el.addEventListener('touchmove',   handleMove,  { passive: false });
-  el.addEventListener('touchend',    handleEnd);
-  el.addEventListener('touchcancel', handleEnd);
-
-  // ── Mouse events (desktop fallback) ───────────────────────────────────────
-  el.addEventListener('mousedown', handleStart);
-  window.addEventListener('mousemove', handleMove);
-  window.addEventListener('mouseup',   handleEnd);
-
-  // Return cleanup fn
-  return () => {
-    el.removeEventListener('touchstart',  handleStart);
-    el.removeEventListener('touchmove',   handleMove);
-    el.removeEventListener('touchend',    handleEnd);
-    el.removeEventListener('touchcancel', handleEnd);
-    el.removeEventListener('mousedown',   handleStart);
-    window.removeEventListener('mousemove', handleMove);
-    window.removeEventListener('mouseup',   handleEnd);
-  };
+export function attachSwipe(stackArea, onDecision) {
+  stackArea.addEventListener('mousedown',  e => onStart(e, onDecision));
+  stackArea.addEventListener('touchstart', e => onStart(e, onDecision), { passive: true });
 }
 
-/**
- * Animate a card flying off-screen in a given direction, then call done().
- */
-export function flyOff(el, direction, done) {
-  const signX   = direction === 'like' ? 1 : -1;
-  const exitX   = signX * (window.innerWidth + el.offsetWidth + 60);
-  const exitRot = signX * CONFIG.MAX_ROTATION * 1.5;
+function onStart(e, onDecision) {
+  const card = e.target.closest('.card');
+  if (!card || card.classList.contains('card-ghost')) return;
+  if (isDragging) return;
 
-  el.classList.add('flying');
-  el.style.transition = 'transform 0.42s cubic-bezier(0.4, 0, 1, 1), opacity 0.42s ease';
-  el.style.transform  = `translateX(${exitX}px) rotate(${exitRot}deg)`;
-  el.style.opacity    = '0';
+  isDragging = true;
+  activeCard = card;
+  const pt = e.touches ? e.touches[0] : e;
+  startX = pt.clientX;
+  startY = pt.clientY;
+  currentX = 0;
+  activeCard.style.transition = 'none';
 
-  el.addEventListener('transitionend', () => done(), { once: true });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup',   () => onEnd(stackArea, onDecision));
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend',  () => onEnd(stackArea, onDecision));
+}
+
+function onMove(e) {
+  if (!isDragging || !activeCard) return;
+  if (e.cancelable) e.preventDefault();
+  const pt = e.touches ? e.touches[0] : e;
+  currentX = pt.clientX - startX;
+  const currentY = pt.clientY - startY;
+  activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.3}px) rotate(${currentX * 0.08}deg)`;
+
+  const stampLike = activeCard.querySelector('.stamp-like');
+  const stampNope = activeCard.querySelector('.stamp-nope');
+  const ratio = Math.abs(currentX) / SWIPE_THRESHOLD;
+
+  if (currentX > 20) {
+    stampLike.style.opacity = Math.min(ratio, 1);
+    stampNope.style.opacity = 0;
+  } else if (currentX < -20) {
+    stampNope.style.opacity = Math.min(ratio, 1);
+    stampLike.style.opacity = 0;
+  } else {
+    stampLike.style.opacity = 0;
+    stampNope.style.opacity = 0;
+  }
+}
+
+function onEnd(stackArea, onDecision) {
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup',   () => onEnd(stackArea, onDecision));
+  document.removeEventListener('touchmove', onMove);
+  document.removeEventListener('touchend',  () => onEnd(stackArea, onDecision));
+  if (!isDragging) return;
+  isDragging = false;
+
+  if (Math.abs(currentX) >= SWIPE_THRESHOLD) {
+    flyOut(activeCard, currentX > 0, stackArea, onDecision);
+  } else {
+    snapBack(activeCard);
+  }
+}
+
+export function flyOut(card, liked, stackArea, onDecision) {
+  const dir = liked ? 1 : -1;
+  const tx  = dir * (window.innerWidth + 200);
+  card.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
+  card.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
+  card.style.opacity    = '0';
+  setTimeout(() => {
+    updateGhostCards(stackArea);
+    onDecision(liked);
+  }, 350);
+}
+
+function snapBack(card) {
+  if (!card) return;
+  card.style.transition = 'transform 0.4s cubic-bezier(.34,1.56,.64,1)';
+  card.style.transform  = 'translate(0,0) rotate(0deg)';
+  card.querySelector('.stamp-like').style.opacity = 0;
+  card.querySelector('.stamp-nope').style.opacity = 0;
 }

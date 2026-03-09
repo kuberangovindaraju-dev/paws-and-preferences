@@ -1,82 +1,32 @@
-/* ─── Base Reset & Variables ─────────────────────────────────────────────── */
-
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Palette */
-  --cream:         #FAF6F0;
-  --warm:          #F2E8D9;
-  --sand:          #E8D5BC;
-  --sandDark:      #D4BFA0;
-  --terracotta:    #C4622D;
-  --terracottaHov: #A84B1F;
-  --charcoal:      #2C2416;
-  --mid:           #7A6652;
-  --light-mid:     #B8A898;
-  --like-green:    #4EC26A;
-  --nope-red:      #E84C4C;
-
-  /* Type */
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body:    'DM Sans', system-ui, sans-serif;
-
-  /* Spacing */
-  --radius-card:   22px;
-  --radius-btn:    50px;
-
-  /* Shadow */
-  --shadow-card:   0 12px 40px rgba(44, 36, 22, 0.18), 0 2px 8px rgba(44, 36, 22, 0.08);
-  --shadow-btn:    0 4px 16px rgba(44, 36, 22, 0.15);
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
+  --cream:   #F9F4EE;
+  --warm:    #EDE4D8;
+  --sand:    #D9CABC;
+  --clay:    #B8956A;
+  --rust:    #C0533A;
+  --forest:  #3A6B4F;
+  --ink:     #1E1A17;
+  --muted:   #7A6E66;
+  --card-w:  min(360px, 88vw);
+  --card-h:  min(520px, 72vh);
+  --r:       24px;
 }
 
 html, body {
   height: 100%;
   overflow: hidden;
-  overscroll-behavior: none;
-}
-
-body {
-  font-family: var(--font-body);
-  background-color: var(--cream);
-  color: var(--charcoal);
+  background: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
   -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  -webkit-user-select: none;
+  touch-action: none;
 }
 
-/* Subtle noise grain */
-body::after {
+body::before {
   content: '';
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none;
-  z-index: 9999;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-img {
-  display: block;
-  max-width: 100%;
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-  border: none;
-  background: none;
-}
-
-.hidden {
-  display: none !important;
 }

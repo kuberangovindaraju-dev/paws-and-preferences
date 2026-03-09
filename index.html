@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Paws & Preferences 🐾</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:  #F9F4EE;
+      --warm:   #EDE4D8;
+      --sand:   #D9CABC;
+      --clay:   #B8956A;
+      --rust:   #C0533A;
+      --forest: #3A6B4F;
+      --ink:    #1E1A17;
+      --muted:  #7A6E66;
+      --card-w: min(360px, 88vw);
+      --card-h: min(520px, 72vh);
+      --r:      24px;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--cream);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    #app {
+      position: relative; z-index: 1;
+      height: 100dvh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 0 16px;
+      overflow: hidden;
+    }
+
+    header {
+      width: 100%; max-width: 420px;
+      padding: 20px 0 12px;
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(22px, 5vw, 28px);
+      font-weight: 900;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--clay); }
+    .progress-pill {
+      margin-left: auto;
+      background: var(--warm);
+      border: 1px solid var(--sand);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .progress-pill b { color: var(--ink); }
+
+    #stack-area {
+      flex: 1;
+      position: relative;
+      width: var(--card-w);
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .card {
+      position: absolute;
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: var(--r);
+      overflow: hidden;
+      background: var(--warm);
+      box-shadow:
+        0 2px 4px rgba(30,26,23,0.06),
+        0 12px 40px rgba(30,26,23,0.14),
+        0 1px 0 rgba(255,255,255,0.9) inset;
+      cursor: grab;
+      will-change: transform;
+      user-select: none;
+    }
+    .card:active { cursor: grabbing; }
+
+    .card img {
+      width: 100%; height: 85%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+      background: var(--sand);
+    }
+    .card img.loading {
+      background: linear-gradient(90deg, var(--sand) 25%, var(--warm) 50%, var(--sand) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .card-footer {
+      height: 15%;
+      padding: 0 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .cat-number {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 16px;
+    }
+    .cat-tag {
+      background: var(--warm);
+      border: 1px solid var(--sand);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 11px; font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .card-ghost {
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    .stamp {
+      position: absolute; top: 28px;
+      padding: 8px 18px; border-radius: 8px;
+      font-family: 'Playfair Display', serif;
+      font-size: 32px; font-weight: 900;
+      letter-spacing: 2px; text-transform: uppercase;
+      opacity: 0; pointer-events: none;
+      border: 4px solid; z-index: 10;
+      transition: opacity 0.05s;
+    }
+    .stamp-like { left: 24px; color: var(--forest); border-color: var(--forest); transform: rotate(-12deg); }
+    .stamp-nope { right: 24px; color: var(--rust);   border-color: var(--rust);   transform: rotate(12deg);  }
+
+    #actions {
+      width: 100%; max-width: 320px;
+      padding: 16px 0 env(safe-area-inset-bottom, 20px);
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+    }
+    .btn {
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), box-shadow 0.15s ease;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.92) !important; }
+    .btn:hover  { transform: scale(1.08); }
+    .btn-nope {
+      width: 64px; height: 64px; background: white;
+      box-shadow: 0 4px 16px rgba(192,83,58,0.18), 0 1px 0 rgba(255,255,255,0.9) inset;
+      color: var(--rust); font-size: 26px;
+    }
+    .btn-like {
+      width: 64px; height: 64px; background: white;
+      box-shadow: 0 4px 16px rgba(58,107,79,0.18), 0 1px 0 rgba(255,255,255,0.9) inset;
+      color: var(--forest); font-size: 26px;
+    }
+
+    .hint { font-size: 12px; color: var(--sand); text-align: center; letter-spacing: 0.3px; padding-bottom: 6px; }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--cream);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+    }
+    .paw-loader { font-size: 48px; animation: pawBounce 0.8s ease-in-out infinite alternate; }
+    @keyframes pawBounce {
+      from { transform: translateY(0) rotate(-10deg); }
+      to   { transform: translateY(-16px) rotate(10deg); }
+    }
+    #loading p { color: var(--muted); font-size: 14px; }
+    #loading-bar-wrap { width: 160px; height: 4px; background: var(--sand); border-radius: 999px; overflow: hidden; }
+    #loading-bar { height: 100%; background: var(--clay); border-radius: 999px; width: 0%; transition: width 0.3s ease; }
+
+    #summary {
+      display: none; position: fixed; inset: 0; z-index: 90;
+      background: var(--cream); flex-direction: column;
+      align-items: center; overflow-y: auto;
+      padding: 0 20px env(safe-area-inset-bottom, 24px);
+    }
+    #summary.active { display: flex; }
+
+    .summary-header { width: 100%; max-width: 440px; padding-top: 32px; text-align: center; }
+    .summary-header .big-emoji { font-size: 52px; line-height: 1; margin-bottom: 12px; }
+    .summary-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 7vw, 36px); font-weight: 900;
+      color: var(--ink); margin-bottom: 8px;
+    }
+    .summary-header p { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+    .stats-row { display: flex; gap: 12px; width: 100%; max-width: 360px; margin: 24px 0; }
+    .stat-card {
+      flex: 1; background: white; border-radius: 16px;
+      padding: 16px 12px; text-align: center;
+      box-shadow: 0 2px 12px rgba(30,26,23,0.08);
+    }
+    .stat-card .stat-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 900; line-height: 1; }
+    .stat-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-top: 4px; }
+    .stat-card.liked  .stat-num { color: var(--forest); }
+    .stat-card.passed .stat-num { color: var(--rust); }
+    .stat-card.total  .stat-num { color: var(--clay); }
+
+    .liked-section { width: 100%; max-width: 440px; }
+    .liked-section h3 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--ink); }
+    .liked-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+    .liked-thumb {
+      aspect-ratio: 1; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 2px 10px rgba(30,26,23,0.1);
+      animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .liked-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    @keyframes popIn {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .replay-btn {
+      margin: 28px 0 8px; padding: 14px 40px;
+      border: none; border-radius: 999px;
+      background: var(--ink); color: white;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+      cursor: pointer; letter-spacing: 0.2px;
+      transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), background 0.15s;
+    }
+    .replay-btn:hover  { transform: scale(1.04); background: var(--clay); }
+    .replay-btn:active { transform: scale(0.97); }
+    .empty-likes { text-align: center; padding: 24px; color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="paw-loader">🐾</div>
+  <p>Fetching some cuties…</p>
+  <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="logo">Paws <span>&</span> Preferences</div>
+    <div class="progress-pill"><b id="current-num">1</b> / <span id="total-num">15</span></div>
+  </header>
+  <div id="stack-area"></div>
+  <p class="hint">Swipe right to ❤️ · Swipe left to skip</p>
+  <div id="actions">
+    <button class="btn btn-nope" id="btn-nope" aria-label="Dislike">✕</button>
+    <button class="btn btn-like" id="btn-like" aria-label="Like">♥</button>
+  </div>
+</div>
+
+<div id="summary">
+  <div class="summary-header">
+    <div class="big-emoji" id="summary-emoji">🐱</div>
+    <h2 id="summary-title">You're a cat person!</h2>
+    <p id="summary-desc">Here's what you thought of today's lineup.</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card liked"><div class="stat-num" id="stat-liked">0</div><div class="stat-label">Liked</div></div>
+    <div class="stat-card passed"><div class="stat-num" id="stat-passed">0</div><div class="stat-label">Passed</div></div>
+    <div class="stat-card total"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
+  </div>
+  <div class="liked-section">
+    <h3 id="liked-heading">Your favourites 🐾</h3>
+    <div class="liked-grid" id="liked-grid"></div>
+    <div class="empty-likes" id="empty-likes" style="display:none;">No cats liked — they'll win you over next time! 😸</div>
+  </div>
+  <button class="replay-btn" id="replay-btn">Try again 🔄</button>
+</div>
+
+<script>
+// ─── Config ─────────────────────────────────────────────────
+const TOTAL_CATS = 15;
+const SWIPE_THRESHOLD = 80;
+const CAT_TAGS = ['tabby','kitten','fluffy','ginger','black','white','orange',
+                  'cute','sleepy','playful','grumpy','tiny','chonk','void','calico'];
+
+// ─── State ───────────────────────────────────────────────────
+let cats = [];
+let currentIdx = 0;
+let isDragging = false;
+let startX = 0, startY = 0, currentX = 0;
+let activeCard = null;
+
+// ─── Elements ────────────────────────────────────────────────
+const stackArea  = document.getElementById('stack-area');
+const loadingEl  = document.getElementById('loading');
+const loadingBar = document.getElementById('loading-bar');
+const summaryEl  = document.getElementById('summary');
+const currentNum = document.getElementById('current-num');
+const totalNum   = document.getElementById('total-num');
+const btnLike    = document.getElementById('btn-like');
+const btnNope    = document.getElementById('btn-nope');
+const replayBtn  = document.getElementById('replay-btn');
+
+// ─── Load cats ───────────────────────────────────────────────
+// HOW CATAAS WORKS:
+//   GET https://cataas.com/cat  →  returns a random cat IMAGE (not JSON)
+//
+// CORS situation:
+//   - fetch() calls are blocked (no CORS headers from cataas)
+//   - <img src="https://cataas.com/cat"> works perfectly (browsers
+//     always allow cross-origin image src — no CORS needed)
+//
+// To get 15 DIFFERENT cats we add a unique ?v= param per card.
+// Without it, the browser caches the first response and reuses it.
+
+async function loadCats() {
+  cats = [];
+  const base = Date.now();
+
+  for (let i = 0; i < TOTAL_CATS; i++) {
+    cats.push({
+      url: `https://cataas.com/cat?v=${base}-${i}`,
+      tag: CAT_TAGS[i % CAT_TAGS.length],
+      liked: null
+    });
+  }
+
+  // Warm the browser cache using <img> elements (NOT fetch)
+  await Promise.allSettled(
+    cats.map((cat, i) => new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        loadingBar.style.width = Math.round(((i + 1) / TOTAL_CATS) * 100) + '%';
+        resolve();
+      };
+      img.src = cat.url;
+    }))
+  );
+
+  totalNum.textContent = cats.length;
+}
+
+// ─── Card DOM ────────────────────────────────────────────────
+function createCard(cat, index) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.index = index;
+
+  const img = document.createElement('img');
+  img.classList.add('loading');
+  img.src = cat.url; // ← cataas.com URL used as <img src> directly
+  img.alt = `Cat ${index + 1}`;
+  img.draggable = false;
+  img.onload = () => img.classList.remove('loading');
+
+  const footer = document.createElement('div');
+  footer.className = 'card-footer';
+
+  const num = document.createElement('div');
+  num.className = 'cat-number';
+  num.textContent = `Cat #${index + 1}`;
+
+  const tagEl = document.createElement('div');
+  tagEl.className = 'cat-tag';
+  tagEl.textContent = cat.tag;
+
+  footer.appendChild(num);
+  footer.appendChild(tagEl);
+
+  const stampLike = document.createElement('div');
+  stampLike.className = 'stamp stamp-like';
+  stampLike.textContent = 'CUTE!';
+
+  const stampNope = document.createElement('div');
+  stampNope.className = 'stamp stamp-nope';
+  stampNope.textContent = 'NOPE';
+
+  card.appendChild(stampNope);
+  card.appendChild(stampLike);
+  card.appendChild(img);
+  card.appendChild(footer);
+  return card;
+}
+
+function renderStack() {
+  stackArea.innerHTML = '';
+  const visible = Math.min(3, cats.length - currentIdx);
+  for (let i = visible - 1; i >= 0; i--) {
+    const idx = currentIdx + i;
+    if (idx >= cats.length) continue;
+    const card = createCard(cats[idx], idx);
+    if (i !== 0) {
+      card.classList.add('card-ghost');
+      card.style.transform = `scale(${1 - i * 0.05}) translateY(${i * 10}px)`;
+      card.style.opacity = 1 - i * 0.15;
+      card.style.zIndex = visible - i;
+    } else {
+      card.style.zIndex = 10;
+      attachDragHandlers(card);
+    }
+    stackArea.appendChild(card);
+  }
+  activeCard = stackArea.querySelector(`.card[data-index="${currentIdx}"]`);
+}
+
+// ─── Swipe logic ─────────────────────────────────────────────
+function attachDragHandlers(card) {
+  card.addEventListener('mousedown', onStart);
+  card.addEventListener('touchstart', onStart, { passive: true });
+}
+
+function onStart(e) {
+  if (isDragging) return;
+  isDragging = true;
+  const pt = e.touches ? e.touches[0] : e;
+  startX = pt.clientX; startY = pt.clientY; currentX = 0;
+  activeCard = e.currentTarget;
+  activeCard.style.transition = 'none';
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onEnd);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onEnd);
+}
+
+function onMove(e) {
+  if (!isDragging || !activeCard) return;
+  if (e.cancelable) e.preventDefault();
+  const pt = e.touches ? e.touches[0] : e;
+  currentX = pt.clientX - startX;
+  const dy = pt.clientY - startY;
+  activeCard.style.transform = `translate(${currentX}px, ${dy * 0.3}px) rotate(${currentX * 0.08}deg)`;
+  const ratio = Math.abs(currentX) / SWIPE_THRESHOLD;
+  activeCard.querySelector('.stamp-like').style.opacity = currentX > 20  ? Math.min(ratio, 1) : 0;
+  activeCard.querySelector('.stamp-nope').style.opacity = currentX < -20 ? Math.min(ratio, 1) : 0;
+}
+
+function onEnd() {
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup', onEnd);
+  document.removeEventListener('touchmove', onMove);
+  document.removeEventListener('touchend', onEnd);
+  if (!isDragging) return;
+  isDragging = false;
+  Math.abs(currentX) >= SWIPE_THRESHOLD ? flyOut(currentX > 0) : snapBack();
+}
+
+function snapBack() {
+  if (!activeCard) return;
+  activeCard.style.transition = 'transform 0.4s cubic-bezier(.34,1.56,.64,1)';
+  activeCard.style.transform = 'translate(0,0) rotate(0deg)';
+  activeCard.querySelector('.stamp-like').style.opacity = 0;
+  activeCard.querySelector('.stamp-nope').style.opacity = 0;
+}
+
+function flyOut(liked) {
+  if (!activeCard) return;
+  const dir = liked ? 1 : -1;
+  activeCard.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
+  activeCard.style.transform = `translate(${dir * (window.innerWidth + 200)}px, -40px) rotate(${dir * 25}deg)`;
+  activeCard.style.opacity = '0';
+  cats[currentIdx].liked = liked;
+  currentIdx++;
+  setTimeout(() => {
+    if (currentIdx >= cats.length) {
+      showSummary();
+    } else {
+      currentNum.textContent = currentIdx + 1;
+      renderStack();
+    }
+  }, 350);
+}
+
+btnLike.addEventListener('click', () => { currentX =  SWIPE_THRESHOLD + 10; flyOut(true);  });
+btnNope.addEventListener('click', () => { currentX = -(SWIPE_THRESHOLD + 10); flyOut(false); });
+
+// ─── Summary ─────────────────────────────────────────────────
+function showSummary() {
+  const liked  = cats.filter(c => c.liked === true);
+  const passed = cats.filter(c => c.liked === false);
+  document.getElementById('stat-liked').textContent  = liked.length;
+  document.getElementById('stat-passed').textContent = passed.length;
+  document.getElementById('stat-total').textContent  = cats.length;
+
+  const pct = liked.length / cats.length;
+  const [emoji, title, desc] =
+    pct >= 0.8 ? ['😻','Absolute Cat Lover!',   `You liked ${liked.length} of ${cats.length} cats. So much love! 🐾`]
+  : pct >= 0.5 ? ['😸','Certified Cat Fan!',    `${liked.length} cuties won your heart today. Nice taste!`]
+  : pct >= 0.2 ? ['🐱','Picky but Passionate!', `Only ${liked.length} cats made the cut — high standards!`]
+               : ['🙀','Hard to Impress…',       `Just ${liked.length} liked. Maybe next batch has your type?`];
+
+  document.getElementById('summary-emoji').textContent = emoji;
+  document.getElementById('summary-title').textContent = title;
+  document.getElementById('summary-desc').textContent  = desc;
+
+  const grid    = document.getElementById('liked-grid');
+  const emptyEl = document.getElementById('empty-likes');
+  grid.innerHTML = '';
+
+  if (liked.length === 0) {
+    emptyEl.style.display = 'block';
+    document.getElementById('liked-heading').style.display = 'none';
+  } else {
+    emptyEl.style.display = 'none';
+    document.getElementById('liked-heading').style.display = '';
+    liked.forEach((cat, i) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'liked-thumb';
+      thumb.style.animationDelay = (i * 0.06) + 's';
+      const img = document.createElement('img');
+      img.src = cat.url; // Already cached by browser — loads instantly
+      img.alt = 'Liked cat';
+      thumb.appendChild(img);
+      grid.appendChild(thumb);
+    });
+  }
+  summaryEl.classList.add('active');
+  summaryEl.scrollTop = 0;
+}
+
+replayBtn.addEventListener('click', () => {
+  summaryEl.classList.remove('active');
+  currentIdx = 0;
+  init();
+});
+
+// ─── Init ────────────────────────────────────────────────────
+async function init() {
+  loadingEl.style.display = 'flex';
+  loadingBar.style.width = '0%';
+  stackArea.innerHTML = '';
+  currentNum.textContent = '1';
+  await loadCats();
+  loadingEl.style.display = 'none';
+  renderStack();
+}
+
+init();
+</script>
+</body>
+</html>

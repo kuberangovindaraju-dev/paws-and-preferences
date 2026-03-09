@@ -4,13 +4,18 @@ import { updateGhostCards } from './card.js';
 let isDragging = false;
 let startX = 0, startY = 0, currentX = 0;
 let activeCard = null;
+let currentStackArea = null;
+let currentOnDecision = null;
 
 export function attachSwipe(stackArea, onDecision) {
-  stackArea.addEventListener('mousedown',  e => onStart(e, onDecision));
-  stackArea.addEventListener('touchstart', e => onStart(e, onDecision), { passive: true });
+  currentStackArea  = stackArea;
+  currentOnDecision = onDecision;
+
+  stackArea.addEventListener('mousedown',  handleStart);
+  stackArea.addEventListener('touchstart', handleStart, { passive: true });
 }
 
-function onStart(e, onDecision) {
+function handleStart(e) {
   const card = e.target.closest('.card');
   if (!card || card.classList.contains('card-ghost')) return;
   if (isDragging) return;
@@ -18,23 +23,25 @@ function onStart(e, onDecision) {
   isDragging = true;
   activeCard = card;
   const pt = e.touches ? e.touches[0] : e;
-  startX = pt.clientX;
-  startY = pt.clientY;
+  startX   = pt.clientX;
+  startY   = pt.clientY;
   currentX = 0;
   activeCard.style.transition = 'none';
 
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup',   () => onEnd(stackArea, onDecision));
-  document.addEventListener('touchmove', onMove, { passive: false });
-  document.addEventListener('touchend',  () => onEnd(stackArea, onDecision));
+  document.addEventListener('mousemove', handleMove);
+  document.addEventListener('mouseup',   handleEnd);
+  document.addEventListener('touchmove', handleMove, { passive: false });
+  document.addEventListener('touchend',  handleEnd);
 }
 
-function onMove(e) {
+function handleMove(e) {
   if (!isDragging || !activeCard) return;
   if (e.cancelable) e.preventDefault();
+
   const pt = e.touches ? e.touches[0] : e;
   currentX = pt.clientX - startX;
   const currentY = pt.clientY - startY;
+
   activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.3}px) rotate(${currentX * 0.08}deg)`;
 
   const stampLike = activeCard.querySelector('.stamp-like');
@@ -53,16 +60,18 @@ function onMove(e) {
   }
 }
 
-function onEnd(stackArea, onDecision) {
-  document.removeEventListener('mousemove', onMove);
-  document.removeEventListener('mouseup',   () => onEnd(stackArea, onDecision));
-  document.removeEventListener('touchmove', onMove);
-  document.removeEventListener('touchend',  () => onEnd(stackArea, onDecision));
+function handleEnd() {
+  // Always remove listeners first using the named references
+  document.removeEventListener('mousemove', handleMove);
+  document.removeEventListener('mouseup',   handleEnd);
+  document.removeEventListener('touchmove', handleMove);
+  document.removeEventListener('touchend',  handleEnd);
+
   if (!isDragging) return;
   isDragging = false;
 
   if (Math.abs(currentX) >= SWIPE_THRESHOLD) {
-    flyOut(activeCard, currentX > 0, stackArea, onDecision);
+    flyOut(activeCard, currentX > 0, currentStackArea, () => currentOnDecision(currentX > 0));
   } else {
     snapBack(activeCard);
   }
@@ -74,9 +83,10 @@ export function flyOut(card, liked, stackArea, onDecision) {
   card.style.transition = 'transform 0.45s cubic-bezier(.55,0,.7,.4), opacity 0.45s ease';
   card.style.transform  = `translate(${tx}px, -40px) rotate(${dir * 25}deg)`;
   card.style.opacity    = '0';
+
   setTimeout(() => {
     updateGhostCards(stackArea);
-    onDecision(liked);
+    onDecision();
   }, 350);
 }
 
